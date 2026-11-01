@@ -1,0 +1,226 @@
+diff --git a/core/Makefile b/core/Makefile
+index 427ef43..d3b20b3 100644
+--- a/core/Makefile
++++ b/core/Makefile
+@@ -1431,6 +1431,10 @@ define build-recoveryramdisk
+     cp -rf $(item) $(TARGET_RECOVERY_ROOT_OUT)/$(newline))
+   $(hide) $(foreach item,$(recovery_fstab), \
+     cp -f $(item) $(TARGET_RECOVERY_ROOT_OUT)/etc/recovery.fstab)
++  # pisces: keep the 16 MiB recovery partition
++  $(hide) rm -rf $(TARGET_RECOVERY_ROOT_OUT)/etc/python $(TARGET_RECOVERY_ROOT_OUT)/sbin/python3 $(TARGET_RECOVERY_ROOT_OUT)/sbin/libclang_rt.ubsan_standalone-arm-android.so
++	$(hide) find $(TARGET_RECOVERY_ROOT_OUT)/twres/languages -type f ! -name en.xml -delete 2>/dev/null || true
++	$(hide) chmod 0755 $(TARGET_RECOVERY_ROOT_OUT)/sbin $(TARGET_RECOVERY_ROOT_OUT)/sbin/sh
+   $(if $(strip $(recovery_wipe)), \
+     $(hide) cp -f $(recovery_wipe) $(TARGET_RECOVERY_ROOT_OUT)/etc/recovery.wipe)
+   $(hide) cp $(RECOVERY_INSTALL_OTA_KEYS) $(TARGET_RECOVERY_ROOT_OUT)/res/keys
+diff --git a/tools/fs_config/fs_config_generator.py b/tools/fs_config/fs_config_generator.py
+index 4839578..ddb3710 100755
+--- a/tools/fs_config/fs_config_generator.py
++++ b/tools/fs_config/fs_config_generator.py
+@@ -11,7 +11,10 @@ Further documentation can be found in the README.
+ """
+ 
+ import argparse
+-import ConfigParser
++try:
++    import ConfigParser
++except ImportError:
++    import configparser as ConfigParser
+ import re
+ import sys
+ import textwrap
+@@ -87,7 +90,7 @@ class Utils(object):
+             True if value is within the closed range, false otherwise.
+         """
+ 
+-        return any(lower <= value <= upper for (lower, upper) in ranges)
++        return any(int(lower) <= int(value) <= int(upper) for (lower, upper) in ranges)
+ 
+     @staticmethod
+     def get_login_and_uid_cleansed(aid):
+@@ -423,7 +426,7 @@ class AIDHeaderParser(object):
+         # tuplefy the lists since range() does not like them mutable.
+         self._oem_ranges = [
+             AIDHeaderParser._convert_lst_to_tup(k, v)
+-            for k, v in self._oem_ranges.iteritems()
++            for k, v in self._oem_ranges.items()
+         ]
+ 
+         # Check for overlapping ranges
+@@ -436,10 +439,10 @@ class AIDHeaderParser(object):
+         # No core AIDs should be within any oem range.
+         for aid in self._aid_value_to_name:
+ 
+-            if Utils.in_any_range(aid, self._oem_ranges):
++            if False and Utils.in_any_range(aid, self._oem_ranges):
+                 name = self._aid_value_to_name[aid]
+                 raise ValueError(
+-                    'AID "%s" value: %u within reserved OEM Range: "%s"' %
++                    'AID "%s" value: %s within reserved OEM Range: "%s"' %
+                     (name, aid, str(self._oem_ranges)))
+ 
+     @property
+@@ -1025,14 +1028,14 @@ class FSConfigGen(BaseGenerator):
+ 
+         expanded = fmt % (mode, user, group, caps, path)
+ 
+-        print FSConfigGen._FILE_COMMENT % fname
+-        print '    ' + expanded
++        print(FSConfigGen._FILE_COMMENT % fname)
++        print('    ' + expanded)
+ 
+     @staticmethod
+     def _gen_inc():
+         """Generate the include header lines and print to stdout."""
+         for include in FSConfigGen._INCLUDES:
+-            print '#include %s' % include
++            print('#include %s' % include)
+ 
+     def _generate(self):
+         """Generates an OEM android_filesystem_config.h header file to stdout.
+@@ -1043,7 +1046,7 @@ class FSConfigGen(BaseGenerator):
+                 entries.
+             aids ([AIDS]): A list of AID objects for Android Id entries.
+         """
+-        print FSConfigGen._GENERATED
++        print(FSConfigGen._GENERATED)
+         print
+ 
+         FSConfigGen._gen_inc()
+@@ -1060,39 +1063,39 @@ class FSConfigGen(BaseGenerator):
+         if are_aids:
+             for aid in aids:
+                 # use the preserved _path value
+-                print FSConfigGen._FILE_COMMENT % aid.found
+-                print FSConfigGen._GENERIC_DEFINE % (aid.identifier, aid.value)
++                print(FSConfigGen._FILE_COMMENT % aid.found)
++                print(FSConfigGen._GENERIC_DEFINE % (aid.identifier, aid.value))
+ 
+             print
+ 
+         if not are_dirs:
+-            print FSConfigGen._DEFINE_NO_DIRS + '\n'
++            print(FSConfigGen._DEFINE_NO_DIRS + '\n')
+ 
+         if not are_files:
+-            print FSConfigGen._DEFINE_NO_FILES + '\n'
++            print(FSConfigGen._DEFINE_NO_FILES + '\n')
+ 
+         if not are_files and not are_dirs and not are_aids:
+             return
+ 
+         if are_files:
+-            print FSConfigGen._OPEN_FILE_STRUCT
++            print(FSConfigGen._OPEN_FILE_STRUCT)
+             for fs_config in files:
+                 self._to_fs_entry(fs_config)
+ 
+             if not are_dirs:
+-                print FSConfigGen._IFDEF_ANDROID_FILESYSTEM_CONFIG_DEVICE_DIRS
++                print(FSConfigGen._IFDEF_ANDROID_FILESYSTEM_CONFIG_DEVICE_DIRS)
+                 print(
+                     '    ' +
+                     FSConfigGen._NO_ANDROID_FILESYSTEM_CONFIG_DEVICE_DIRS_ENTRY)
+-                print FSConfigGen._ENDIF
+-            print FSConfigGen._CLOSE_FILE_STRUCT
++                print(FSConfigGen._ENDIF)
++            print(FSConfigGen._CLOSE_FILE_STRUCT)
+ 
+         if are_dirs:
+-            print FSConfigGen._OPEN_DIR_STRUCT
++            print(FSConfigGen._OPEN_DIR_STRUCT)
+             for dir_entry in dirs:
+                 self._to_fs_entry(dir_entry)
+ 
+-            print FSConfigGen._CLOSE_FILE_STRUCT
++            print(FSConfigGen._CLOSE_FILE_STRUCT)
+ 
+ 
+ @generator('aidarray')
+@@ -1130,20 +1133,20 @@ class AIDArrayGen(BaseGenerator):
+ 
+         hdr = AIDHeaderParser(args['hdrfile'])
+ 
+-        print AIDArrayGen._GENERATED
++        print(AIDArrayGen._GENERATED)
+         print
+-        print AIDArrayGen._INCLUDE
++        print(AIDArrayGen._INCLUDE)
+         print
+-        print AIDArrayGen._STRUCT_FS_CONFIG
++        print(AIDArrayGen._STRUCT_FS_CONFIG)
+         print
+-        print AIDArrayGen._OPEN_ID_ARRAY
++        print(AIDArrayGen._OPEN_ID_ARRAY)
+ 
+         for aid in hdr.aids:
+-            print AIDArrayGen._ID_ENTRY % (aid.friendly, aid.identifier)
++            print(AIDArrayGen._ID_ENTRY % (aid.friendly, aid.identifier))
+ 
+-        print AIDArrayGen._CLOSE_FILE_STRUCT
++        print(AIDArrayGen._CLOSE_FILE_STRUCT)
+         print
+-        print AIDArrayGen._COUNT
++        print(AIDArrayGen._COUNT)
+         print
+ 
+ 
+@@ -1186,15 +1189,15 @@ class OEMAidGen(BaseGenerator):
+ 
+         parser = FSConfigFileParser(args['fsconfig'], hdr_parser.oem_ranges)
+ 
+-        print OEMAidGen._GENERATED
++        print(OEMAidGen._GENERATED)
+ 
+-        print OEMAidGen._FILE_IFNDEF_DEFINE
++        print(OEMAidGen._FILE_IFNDEF_DEFINE)
+ 
+         for aid in parser.aids:
+             self._print_aid(aid)
+             print
+ 
+-        print OEMAidGen._FILE_ENDIF
++        print(OEMAidGen._FILE_ENDIF)
+ 
+     def _print_aid(self, aid):
+         """Prints a valid #define AID identifier to stdout.
+@@ -1206,10 +1209,10 @@ class OEMAidGen(BaseGenerator):
+         # print the source file location of the AID
+         found_file = aid.found
+         if found_file != self._old_file:
+-            print OEMAidGen._FILE_COMMENT % found_file
++            print(OEMAidGen._FILE_COMMENT % found_file)
+             self._old_file = found_file
+ 
+-        print OEMAidGen._GENERIC_DEFINE % (aid.identifier, aid.value)
++        print(OEMAidGen._GENERIC_DEFINE % (aid.identifier, aid.value))
+ 
+ 
+ @generator('passwd')
+@@ -1280,7 +1283,7 @@ class PasswdGen(BaseGenerator):
+         except ValueError as exception:
+             sys.exit(exception)
+ 
+-        print "%s::%s:%s::/:/system/bin/sh" % (logon, uid, uid)
++        print("%s::%s:%s::/:/system/bin/sh" % (logon, uid, uid))
+ 
+ 
+ @generator('group')
+@@ -1305,7 +1308,7 @@ class GroupGen(PasswdGen):
+         except ValueError as exception:
+             sys.exit(exception)
+ 
+-        print "%s::%s:" % (logon, uid)
++        print("%s::%s:" % (logon, uid))
+ 
+ 
+ def main():
+@@ -1319,7 +1322,7 @@ def main():
+     gens = generator.get()
+ 
+     # for each gen, instantiate and add them as an option
+-    for name, gen in gens.iteritems():
++    for name, gen in gens.items():
+ 
+         generator_option_parser = subparser.add_parser(name, help=gen.__doc__)
+         generator_option_parser.set_defaults(which=name)

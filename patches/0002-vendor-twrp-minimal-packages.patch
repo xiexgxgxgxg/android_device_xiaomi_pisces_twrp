@@ -1,0 +1,27 @@
+diff --git a/config/packages.mk b/config/packages.mk
+index 5ccc5d8..11f5b9e 100644
+--- a/config/packages.mk
++++ b/config/packages.mk
+@@ -1,21 +1,8 @@
+-# Additional tools
++# Additional tools (trimmed for the 16 MiB recovery partition on pisces)
+ PRODUCT_PACKAGES += \
+-    bash \
+     e2fsck \
+-    fsck.exfat \
+-    htop \
+-    lsof \
+     mke2fs \
+-    mount.exfat \
+-    nano \
+-    openvpn \
+-    powertop \
+     tune2fs \
+-    vim \
+-    mkfs.ntfs \
+-    mount.ntfs \
+-    fsck.ntfs \
+     mkshrc_vendor \
+     toybox_vendor \
+     sh_vendor
+-

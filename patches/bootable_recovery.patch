@@ -1,0 +1,46 @@
+diff --git a/etc/init.rc b/etc/init.rc
+index a2bef2b2..5f988588 100644
+--- a/etc/init.rc
++++ b/etc/init.rc
+@@ -107,19 +107,14 @@ service ueventd /sbin/ueventd
+     critical
+     seclabel u:r:ueventd:s0
+ 
+-service adbd /sbin/adbd --root_seclabel=u:r:su:s0 --device_banner=recovery
++service adbd /sbin/adbd --device_banner=recovery
+     disabled
++    stdio_to_kmsg
+     socket adbd stream 660 system system
+-    seclabel u:r:adbd:s0
+ 
+ # Always start adbd on userdebug and eng builds
+ on property:ro.debuggable=1
+     #write /sys/class/android_usb/android0/enable 1
+     #start adbd
+-    setprop service.adb.root 1
+ 
+-# Restart adbd so it can run as root
+-on property:service.adb.root=1
+-    write /sys/class/android_usb/android0/enable 0
+-    restart adbd
+-    write /sys/class/android_usb/android0/enable 1
++# pisces: do not restart adbd on service.adb.root (3.4 kernel restart loop)
+diff --git a/etc/init.recovery.usb.rc b/etc/init.recovery.usb.rc
+index 8ef20e0e..81b4d4c4 100644
+--- a/etc/init.recovery.usb.rc
++++ b/etc/init.recovery.usb.rc
+@@ -4,6 +4,7 @@ on fs
+     write /sys/class/android_usb/android0/idProduct D001
+     write /sys/class/android_usb/android0/f_ffs/aliases adb
+     write /sys/class/android_usb/android0/functions adb
++    start adbd
+     write /sys/class/android_usb/android0/iManufacturer ${ro.product.manufacturer}
+     write /sys/class/android_usb/android0/iProduct ${ro.product.model}
+     write /sys/class/android_usb/android0/iSerial ${ro.serialno}
+@@ -26,5 +27,5 @@ on property:sys.usb.config=mtp,adb
+ on property:sys.usb.config=adb
+     write /sys/class/android_usb/android0/enable 0
+     write /sys/class/android_usb/android0/functions ${sys.usb.config}
+-    write /sys/class/android_usb/android0/enable ${service.adb.root}
+     start adbd
++

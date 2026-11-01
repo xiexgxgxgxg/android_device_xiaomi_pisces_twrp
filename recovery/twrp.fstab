@@ -1,0 +1,11 @@
+/recovery        emmc   /dev/block/mmcblk0p21
+/boot            emmc   /dev/block/mmcblk0p19
+/system          ext4   /dev/block/mmcblk0p24
+/data            ext4   /dev/block/mmcblk0p27          flags=encryptable=/dev/block/mmcblk0p14
+/cache           ext4   /dev/block/mmcblk0p26
+/persist         ext4   /dev/block/mmcblk0p23          flags=display="Persist Data";wipeingui;backup=1
+/misc            emmc   /dev/block/mmcblk0p14          flags=display="Dualboot Mark";backup=1
+/staging         emmc   /dev/block/mmcblk0p9
+/metadata        emmc   /dev/block/mmcblk0p14          flags=display="Encrypt Table";backup=1
+
+/usbdrive        vfat   /dev/block/sda1         /dev/block/sda                  flags=display="USB Drive";storage;wipeingui;removable

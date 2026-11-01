@@ -1,0 +1,24 @@
+# Minimal recovery init additions for Xiaomi Mi 3 TD (pisces)
+on early-init
+    mkdir /persist 0771 system system
+    chown system system /persist
+
+on init
+    write /proc/sys/kernel/panic 0
+    chmod 0755 /sbin
+    chmod 0755 /sbin/sh
+
+on boot
+    setprop ro.adb.secure 0
+    setprop sys.usb.config adb
+    setprop persist.sys.usb.config adb
+    start ffsenable
+    start copy9log
+
+service ffsenable /sbin/sh /sbin/ffsenable.sh
+    oneshot
+    class main
+
+service copy9log /sbin/sh /sbin/copy9log.sh
+    oneshot
+    class main
