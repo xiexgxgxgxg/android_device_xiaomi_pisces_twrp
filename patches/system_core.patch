@@ -1,0 +1,13 @@
+diff --git a/init/init.cpp b/init/init.cpp
+index b332588..ae27e88 100644
+--- a/init/init.cpp
++++ b/init/init.cpp
+@@ -957,6 +957,8 @@ static void security_failure() {
+ }
+ 
+ static void selinux_initialize(bool in_kernel_domain) {
++    // pisces: 3.4.35 kernel cannot load Android SELinux policy; skip load.
++    return;
+     Timer t;
+ 
+     selinux_callback cb;

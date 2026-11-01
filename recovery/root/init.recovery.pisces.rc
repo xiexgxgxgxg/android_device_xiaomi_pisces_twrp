@@ -1,0 +1,12 @@
+# Minimal recovery init additions for Xiaomi Mi 3 TD (pisces)
+on early-init
+    mkdir /persist 0771 system system
+    chown system system /persist
+
+on init
+    write /proc/sys/kernel/panic 0
+    setprop service.adb.root 1
+    setprop sys.usb.config mtp,adb
+    setprop persist.sys.usb.config mtp,adb
+    write /sys/class/android_usb/android0/enable 1
+    start adbd
