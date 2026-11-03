@@ -75,4 +75,5 @@ TW_EXCLUDE_ZIP := true
 TW_EXCLUDE_LPDUMP := true
 TW_EXCLUDE_LPTOOLS := true
 TW_EXCLUDE_APEX := true
-TW_EXCLUDE_MTP := true
+# MTP: 3.4 kernel has f_mtp only, use the legacy implementation
+TW_MTP_LEGACY := true

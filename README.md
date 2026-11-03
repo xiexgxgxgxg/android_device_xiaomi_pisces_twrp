@@ -16,7 +16,7 @@ Xiaomi Mi 3 TD（codename **pisces**）的 TWRP 设备树。
 
 | 分支 | TWRP | Android 基底 | 状态 |
 |---|---|---|---|
-| **twrp.3.7.0**（默认） | 3.7.0_9 | 9 | 可用：UI、root adb、adb push、Format Data、MTP（legacy） |
+| **twrp.3.7.0**（默认） | 3.7.0_9 | 9 | 可用：UI、root adb、adb push、Format Data、MTP（legacy，开机自动启用） |
 | twrp3.0.2 | 3.0.2 | 6.0 | 可用：root adb + MTP，作为基线保留 |
 
 ## twrp.3.7.0 当前状态
@@ -28,7 +28,8 @@ Xiaomi Mi 3 TD（codename **pisces**）的 TWRP 设备树。
 - `adb push` 到 `/sdcard`、`/data/local/tmp`
 - `Format Data`（`twrp format data`）正常
 - `dmesg` / `/tmp/recovery.log` 可读
-- MTP：走 **legacy f_mtp**（`/dev/mtp_usb`），因为 3.4 内核没有 ffs MTP
+- MTP：走 **legacy f_mtp**（`/dev/mtp_usb`），开机自动启用（`tw_mtp_enabled` 默认 1），
+  USB 描述符为 `18d1:4ee2`（MTP + adb）
 
 关键修复（相对最初交接版本）：
 

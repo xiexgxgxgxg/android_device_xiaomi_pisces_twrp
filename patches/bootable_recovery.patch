@@ -1,5 +1,37 @@
+diff --git a/Android.mk b/Android.mk
+index aedb3f9..2e7997d 100755
+--- a/Android.mk
++++ b/Android.mk
+@@ -233,6 +233,16 @@ ifeq ($(TW_FORCE_USE_BUSYBOX), true)
+ else
+     TW_USE_TOOLBOX := true
+ endif
++endif
++
++# pisces: the 3.4 kernel only provides the legacy f_mtp char device
++# (/dev/mtp_usb), the ffs-based MTP of Android 9 needs a newer f_fs.
++ifeq ($(TW_MTP_LEGACY),true)
++ifeq ($(TW_EXCLUDE_MTP),)
++    LOCAL_CFLAGS += -DTW_HAS_LEGACY_MTP
++    LOCAL_SHARED_LIBRARIES += libtwrpmtp-legacy
++endif
++else ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 28; echo $$?),0)
+ ifeq ($(TW_EXCLUDE_MTP),)
+     LOCAL_SHARED_LIBRARIES += libtwrpmtp-ffs
+ endif
+@@ -897,7 +907,9 @@ ifeq ($(shell test $(PLATFORM_SDK_VERSION) -le 25; echo $$?),0)
+ include $(commands_TWRP_local_path)/bootloader_message/Android.mk
+ endif
+ 
+-ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 28; echo $$?),0)
++ifeq ($(TW_MTP_LEGACY),true)
++    include $(commands_TWRP_local_path)/mtp/legacy/Android.mk
++else ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 28; echo $$?),0)
+     include $(commands_TWRP_local_path)/mtp/ffs/Android.mk
+ else
+     include $(commands_TWRP_local_path)/mtp/legacy/Android.mk
 diff --git a/etc/init.rc b/etc/init.rc
-index a2bef2b2..5f988588 100644
+index a2bef2b..5f98858 100644
 --- a/etc/init.rc
 +++ b/etc/init.rc
 @@ -107,19 +107,14 @@ service ueventd /sbin/ueventd
@@ -26,7 +58,7 @@ index a2bef2b2..5f988588 100644
 -    write /sys/class/android_usb/android0/enable 1
 +# pisces: do not restart adbd on service.adb.root (3.4 kernel restart loop)
 diff --git a/etc/init.recovery.usb.rc b/etc/init.recovery.usb.rc
-index 8ef20e0e..81b4d4c4 100644
+index 8ef20e0..15c9611 100644
 --- a/etc/init.recovery.usb.rc
 +++ b/etc/init.recovery.usb.rc
 @@ -4,6 +4,7 @@ on fs
@@ -37,10 +69,40 @@ index 8ef20e0e..81b4d4c4 100644
      write /sys/class/android_usb/android0/iManufacturer ${ro.product.manufacturer}
      write /sys/class/android_usb/android0/iProduct ${ro.product.model}
      write /sys/class/android_usb/android0/iSerial ${ro.serialno}
-@@ -26,5 +27,5 @@ on property:sys.usb.config=mtp,adb
+@@ -19,12 +20,16 @@ on property:sys.usb.config=mass_storage,adb
+ 
+ on property:sys.usb.config=mtp,adb
+     write /sys/class/android_usb/android0/enable 0
+-    write /sys/class/android_usb/android0/functions ${sys.usb.config}
++    # pisces: adb runs over ffs, so the gadget function list must be
++    # "mtp,ffs" (ffs aliased to adb), not "mtp,adb".
++    write /sys/class/android_usb/android0/f_ffs/aliases adb
++    write /sys/class/android_usb/android0/functions mtp,ffs
+     write /sys/class/android_usb/android0/enable 1
+     start adbd
+ 
  on property:sys.usb.config=adb
      write /sys/class/android_usb/android0/enable 0
-     write /sys/class/android_usb/android0/functions ${sys.usb.config}
+-    write /sys/class/android_usb/android0/functions ${sys.usb.config}
 -    write /sys/class/android_usb/android0/enable ${service.adb.root}
++    write /sys/class/android_usb/android0/functions adb
++    write /sys/class/android_usb/android0/enable 1
      start adbd
 +
+diff --git a/prebuilt/Android.mk b/prebuilt/Android.mk
+index 17636ae..3bbbd4f 100644
+--- a/prebuilt/Android.mk
++++ b/prebuilt/Android.mk
+@@ -158,7 +158,11 @@ else
+     TW_EXCLUDE_MTP := true
+ endif
+ 
+-ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 28; echo $$?),0)
++ifeq ($(TW_MTP_LEGACY),true)
++ifneq ($(TW_EXCLUDE_MTP), true)
++    RELINK_SOURCE_FILES += $(TARGET_OUT_SHARED_LIBRARIES)/libtwrpmtp-legacy.so
++endif
++else ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 28; echo $$?),0)
+ ifneq ($(TW_EXCLUDE_MTP), true)
+     RELINK_SOURCE_FILES += $(TARGET_OUT_SHARED_LIBRARIES)/libtwrpmtp-ffs.so
+     RELINK_SOURCE_FILES += $(TARGET_OUT_SHARED_LIBRARIES)/libasyncio.so

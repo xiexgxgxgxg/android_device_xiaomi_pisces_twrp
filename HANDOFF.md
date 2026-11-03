@@ -208,3 +208,22 @@ TWRP 使用 minimal-manifest-twrp / Omni manifest：
 - 预编译 clang-4691093 需要 `libtinfo.so.5` / `libncurses.so.5`（从 jammy deb 解包到 toolchain/lib）
 - soong 要求 `locale -a` 里有 C.UTF-8：wrapper 脚本 + LOCPATH 本地 localedef
 - 构建必须 `LC_ALL=C`，否则 `sort`/`comm` 在 mini-debuginfo 步骤报 "not in sorted order"
+
+## 15. 2026-11-03 MTP（legacy f_mtp）加回
+
+3.4 内核只有老的 `f_mtp` 字符设备（`/dev/mtp_usb`），没有 A9 的 ffs MTP，
+所以 TWRP 9.0 不能直接用 `libtwrpmtp-ffs`，必须用 legacy 实现：
+
+- `BoardConfig.mk`: `TW_EXCLUDE_MTP := true` → `TW_MTP_LEGACY := true`
+- `bootable/recovery/Android.mk` 与 `prebuilt/Android.mk`:
+  MTP 库/重链接的选择改为优先判断 `TW_MTP_LEGACY`，
+  否则才按 `PLATFORM_SDK_VERSION >= 28` 走 ffs
+- `bootable/recovery/etc/init.recovery.usb.rc`:
+  `sys.usb.config=mtp,adb` 时实际写 `functions mtp,ffs`（ffs 别名 adb），
+  并在 `sys.usb.config=adb` 时补回 `enable 1`（原来被交接补丁删掉会导致关掉 MTP 后 USB 不再启用）
+
+行为：
+
+- TWRP 启动时因 `tw_mtp_enabled` 默认 1 自动 `Enable_MTP()`，
+  USB 描述符变为 `18d1:4ee2`（MTP + adb），`/dev/mtp_usb` 由内核 f_mtp 提供
+- 镜像 15,497,216 字节，仍在 16 MiB 分区内
