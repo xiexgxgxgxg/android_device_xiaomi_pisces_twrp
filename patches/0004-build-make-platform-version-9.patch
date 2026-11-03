@@ -1,0 +1,13 @@
+diff --git a/core/version_defaults.mk b/core/version_defaults.mk
+index 65f435c..6f2bd12 100644
+--- a/core/version_defaults.mk
++++ b/core/version_defaults.mk
+@@ -39,7 +39,7 @@ ifdef INTERNAL_BUILD_ID_MAKEFILE
+   include $(INTERNAL_BUILD_ID_MAKEFILE)
+ endif
+ 
+-PLATFORM_VERSION := 16.1.0
++PLATFORM_VERSION := 9
+ DEFAULT_PLATFORM_VERSION := PPR1
+ MIN_PLATFORM_VERSION := PPR1
+ MAX_PLATFORM_VERSION := PPR1

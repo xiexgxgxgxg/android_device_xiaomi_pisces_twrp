@@ -7,18 +7,19 @@ on init
     write /proc/sys/kernel/panic 0
     chmod 0755 /sbin
     chmod 0755 /sbin/sh
+    # Start adbd as root from the beginning: the 3.4 kernel restart-loop
+    # workaround removed "on property:service.adb.root=1 ... restart adbd",
+    # so service.adb.root has to be set *before* adbd is executed.
+    setprop service.adb.root 1
+    # 3.4 kernels lack ffs AIO support; A9 adbd must use sync read/write
+    setprop sys.usb.ffs.aio_compat 1
 
 on boot
     setprop ro.adb.secure 0
     setprop sys.usb.config adb
     setprop persist.sys.usb.config adb
     start ffsenable
-    start copy9log
 
 service ffsenable /sbin/sh /sbin/ffsenable.sh
-    oneshot
-    class main
-
-service copy9log /sbin/sh /sbin/copy9log.sh
     oneshot
     class main

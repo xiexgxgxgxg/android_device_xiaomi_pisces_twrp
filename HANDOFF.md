@@ -166,3 +166,45 @@ TWRP 使用 minimal-manifest-twrp / Omni manifest：
 - 3.7.0 的 init 补丁里删掉了 root adb 的 restart；所以 3.7 的 adb 是 shell 权限，不是 root。
   需要 root 日志时用 TWRP 3.0，或另做 root 变体。
 - 所有补丁都在 patches/ 下，可直接 git apply；设备树分支也包含同样内容。
+
+## 14. 2026-11-03 实体机验证与修复（TWRP 3.7.0_9）
+
+新环境：Ubuntu 26.04 + 源码在 /data/twrp（机械盘），内核仍为原厂 3.4.35。
+
+已修复并真机验证的问题：
+
+1. **adb shell 起不来**（`exec '/sbin/sh' failed: Permission denied`）
+   `system/core/libcutils/fs_config.cpp` 把 `sbin` / `sbin/*` 设为 `0750 root:shell`；
+   3.7 的 adbd 丢权后进程组不是 `shell`，exec 被拒。改成 `0755 root:root`
+   → `patches/0003-system-core-sbin-world-exec.patch`
+
+2. **Android 版本显示 16.1.0**
+   TeamWin 的 `build/make/core/version_defaults.mk` 默认 `PLATFORM_VERSION := 16.1.0`，
+   改成 `9` → `patches/0004-build-make-platform-version-9.patch`
+
+3. **没有 root / su**
+   本目录不再自带 TWRP 3.0 的静态 adbd（生产版编译，`adb root` 会报
+   "cannot run as root in production builds"），改用源码树编出来的 A9 adbd，
+   并在 `recovery/root/init.recovery.pisces.rc` 里 adbd 启动前设置：
+   - `setprop service.adb.root 1`  → adbd 直接以 root 运行
+   - `setprop sys.usb.ffs.aio_compat 1` → 3.4 内核 f_fs 无 AIO，A9 adbd 退回同步读写
+   否则 A9 adbd 在 3.4 上表现为 `adb devices` 一直 `offline`。
+   验证结果：`adb shell id` = `uid=0(root)`，`adb root` = "already running as root"。
+
+4. **Format Data 报 "Failed to unmount '/data'" / "Unable to format to remove encryption"**
+   `recovery/twrp.fstab` 里 `/data` 的 `encryptable=/dev/block/mmcblk0p14` 指向 MDA，
+   属于错误配置。去掉后不再进入 remove-encryption 流程，`twrp format data` 正常。
+
+5. 移除 `copy9log` 调试服务（25s 后 `pkill adbd`，会打断 adb）。
+
+验证通过项：`adb shell`（root）、`adb push` 到 `/sdcard` 与 `/data/local/tmp`、
+`twrp format data`、`dmesg`、`/tmp/recovery.log`。
+
+编译环境（Ubuntu 26.04，无 root）额外需要的兼容处理：
+
+- python2.7 用 Ubuntu jammy 的 deb 解包到 toolchain/python2（源码编译会被 gcc 15 的
+  `-std=gnu23` 打死）
+- prebuilts 里 clang/gcc/as 的 `#!/usr/bin/python` shebang 改成 `#!/usr/bin/env python`
+- 预编译 clang-4691093 需要 `libtinfo.so.5` / `libncurses.so.5`（从 jammy deb 解包到 toolchain/lib）
+- soong 要求 `locale -a` 里有 C.UTF-8：wrapper 脚本 + LOCPATH 本地 localedef
+- 构建必须 `LC_ALL=C`，否则 `sort`/`comm` 在 mini-debuginfo 步骤报 "not in sorted order"
