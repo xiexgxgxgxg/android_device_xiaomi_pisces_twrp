@@ -10,6 +10,7 @@ Xiaomi Mi 3 TD（codename **pisces**）的 TWRP 设备树。
 | 内核 | 3.4.35（Xiaomi MIUI 原厂，ARM32） |
 | Recovery 分区 | 16 MiB |
 | 分区节点 | 直连 `mmcblk0p*`（by-name 为 SOS/LNX/APP/UDA/CAC/PST/MDA/USP） |
+| 分区尺寸 | system 4 GiB（已重分区）/ cache 384 MiB / userdata ~10 GiB |
 | 屏幕 | 1080x1920 |
 
 ## 分支
@@ -83,6 +84,19 @@ fastboot boot recovery.img
 ```
 
 失败黑屏时长按电源键 30s 重启即可，recovery 分区未被写入，系统仍可启动。
+
+## 分区（4GB system）
+
+2026-11-03 已用 `repartition/pisces-4gb-repartition.zip` 将 system 扩容到 4 GiB：
+
+| 分区 | 原厂 | 现在 |
+|---|---|---|
+| system (p24) | 640 MiB | 4096 MiB |
+| AP1 (p25) | 640 MiB | 8 MiB 占位 |
+| cache (p26) | 384 MiB | 384 MiB |
+| userdata (p27) | 13044 MiB | 10220 MiB |
+
+详见 `repartition/README.md`。
 
 ## 后续计划
 

@@ -1,0 +1,25 @@
+#!/sbin/sh
+OUTFD=$2
+ui_print() {
+  echo -n -e "ui_print $1\n" > /proc/self/fd/$OUTFD
+  echo -n -e "ui_print\n" > /proc/self/fd/$OUTFD
+}
+abort_() { ui_print "ABORT: $1"; exit 1; }
+
+ui_print "=== pisces: restore stock partition table (640/640/384 MiB) ==="
+[ "$(getprop ro.product.device)" = "pisces" ] || abort_ "wrong device"
+if [ ! -f /sdcard/pisces-repartition-ok ]; then
+  ui_print "create /sdcard/pisces-repartition-ok first"; abort_ "confirmation file missing"
+fi
+umount -l /system 2>/dev/null; umount -l /data 2>/dev/null
+umount -l /cache 2>/dev/null; umount -l /sdcard 2>/dev/null
+DISK=/dev/block/mmcblk0
+ui_print "deleting p24..p27 ..."
+sgdisk --delete=24 --delete=25 --delete=26 --delete=27 $DISK || abort_ "delete failed"
+sgdisk --new=24:524288:1835007  --change-name=24:APP --typecode=24:0700 $DISK || abort_ "APP failed"
+sgdisk --new=25:1835008:3145727 --change-name=25:AP1 --typecode=25:0700 $DISK || abort_ "AP1 failed"
+sgdisk --new=26:3145728:3932159 --change-name=26:CAC --typecode=26:0700 $DISK || abort_ "CAC failed"
+sgdisk --new=27:3932160:30646271 --change-name=27:UDA --typecode=27:0700 $DISK || abort_ "UDA failed"
+sgdisk --verify $DISK || abort_ "verify failed"
+ui_print "stock layout restored. reboot recovery and format data."
+exit 0

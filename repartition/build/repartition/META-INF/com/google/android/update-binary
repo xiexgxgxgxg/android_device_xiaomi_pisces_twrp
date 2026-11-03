@@ -1,0 +1,104 @@
+#!/sbin/sh
+OUTFD=$2
+ui_print() {
+  echo -n -e "ui_print $1\n" > /proc/self/fd/$OUTFD
+  echo -n -e "ui_print\n" > /proc/self/fd/$OUTFD
+}
+abort_() { ui_print "ABORT: $1"; exit 1; }
+
+ui_print "=========================================="
+ui_print " pisces 4GB system repartition"
+ui_print " Xiaomi Mi 3 TD (Tegra 4) - DESTRUCTIVE"
+ui_print "=========================================="
+
+DEV=$(getprop ro.product.device)
+[ "$DEV" = "pisces" ] || abort_ "this package is for pisces, found '$DEV'"
+
+if [ ! -f /sdcard/pisces-repartition-ok ]; then
+  ui_print "Safety check: create this file first:"
+  ui_print "  adb shell touch /sdcard/pisces-repartition-ok"
+  abort_ "confirmation file missing"
+fi
+
+DISK=/dev/block/mmcblk0
+S24=$(sgdisk --info=24 $DISK | awk '/First sector/ {print $3}')
+E27=$(sgdisk --info=27 $DISK | awk '/Last sector/ {print $3}')
+SZ24=$(cat /sys/class/block/mmcblk0p24/size 2>/dev/null)
+ui_print "current: p24 start=$S24  p27 end=$E27  p24 sectors=$SZ24"
+
+if [ "$SZ24" = "8388608" ]; then
+  ui_print "already repartitioned (4 GiB system). nothing to do."
+  exit 0
+fi
+[ "$S24" = "524288" ] || abort_ "unexpected p24 start ($S24)"
+[ "$E27" = "30646271" ] || abort_ "unexpected p27 end ($E27)"
+
+ui_print "unmounting..."
+umount -l /system 2>/dev/null
+umount -l /data 2>/dev/null
+umount -l /cache 2>/dev/null
+umount -l /sdcard 2>/dev/null
+umount -l /usbdrive 2>/dev/null
+
+ui_print "backing up GPT to /tmp/pisces-gpt-stock.bin"
+sgdisk --backup=/tmp/pisces-gpt-stock.bin $DISK || abort_ "GPT backup failed"
+[ -s /tmp/pisces-gpt-stock.bin ] || abort_ "GPT backup empty"
+cp -f /tmp/pisces-gpt-stock.bin /tmp/pisces-gpt-stock.bak 2>/dev/null
+
+ui_print "deleting p24..p27 ..."
+sgdisk --delete=24 $DISK || abort_ "delete 24 failed"
+sgdisk --delete=25 $DISK || abort_ "delete 25 failed"
+sgdisk --delete=26 $DISK || abort_ "delete 26 failed"
+sgdisk --delete=27 $DISK || abort_ "delete 27 failed"
+
+ui_print "creating APP (system) 4096 MiB ..."
+sgdisk --new=24:524288:8912895 --change-name=24:APP --typecode=24:0700 $DISK || abort_ "create APP failed"
+ui_print "creating AP1 (8 MiB placeholder, keeps cache=26/data=27 numbering) ..."
+sgdisk --new=25:8912896:8929279 --change-name=25:AP1 --typecode=25:0700 $DISK || abort_ "create AP1 failed"
+ui_print "creating CAC (cache) 384 MiB ..."
+sgdisk --new=26:8929280:9715711 --change-name=26:CAC --typecode=26:0700 $DISK || abort_ "create CAC failed"
+ui_print "creating UDA (userdata) ..."
+sgdisk --new=27:9715712:30646271 --change-name=27:UDA --typecode=27:0700 $DISK || abort_ "create UDA failed"
+
+ui_print "verifying ..."
+sgdisk --verify $DISK || abort_ "GPT verify failed"
+
+ui_print "waiting for kernel to re-read the partition table ..."
+i=0
+while [ $i -lt 10 ]; do
+  SZ=$(cat /sys/class/block/mmcblk0p24/size 2>/dev/null)
+  [ "$SZ" = "8388608" ] && break
+  sleep 1; i=$((i+1))
+done
+SZ=$(cat /sys/class/block/mmcblk0p24/size 2>/dev/null)
+ui_print "p24 size now: $SZ sectors"
+
+if [ "$SZ" = "8388608" ]; then
+  sync; sleep 1
+  ui_print "formatting system (ext4) ..."
+  ok=0
+  for t in 1 2 3; do
+    if mke2fs -t ext4 -b 4096 -L system /dev/block/mmcblk0p24 >/dev/null 2>&1; then ok=1; break; fi
+    sync; sleep 2
+  done
+  [ "$ok" = "1" ] && ui_print "system formatted" || ui_print "WARN: system format failed, use pisces-4gb-format.zip after reboot"
+  ui_print "formatting cache (ext4) ..."
+  ok=0
+  for t in 1 2 3; do
+    if mke2fs -t ext4 -b 4096 -L cache /dev/block/mmcblk0p26 >/dev/null 2>&1; then ok=1; break; fi
+    sync; sleep 2
+  done
+  [ "$ok" = "1" ] && ui_print "cache formatted" || ui_print "WARN: cache format failed, use pisces-4gb-format.zip after reboot"
+  ui_print "done. userdata is NOT formatted."
+else
+  ui_print "kernel still reports the old size; do NOT format here."
+  ui_print "reboot recovery, then flash pisces-4gb-format.zip"
+fi
+
+ui_print ""
+ui_print "next steps:"
+ui_print " 1) reboot recovery"
+ui_print " 2) Wipe -> Format Data (userdata)"
+ui_print " 3) check: system 4096 MiB, cache 384 MiB, data ~10 GiB"
+ui_print "GPT backup saved in RAM: /tmp/pisces-gpt-stock.bin"
+exit 0
