@@ -1,16 +1,16 @@
 # android_device_xiaomi_pisces_twrp_302
 
-Xiaomi Mi 3 TD（codename **pisces**）的 TWRP 设备树（twrp3.0.2 基线）。
+TWRP device tree for the Xiaomi Mi 3 TD (codename **pisces**), twrp3.0.2 baseline.
 
-## 硬件
+## Hardware
 
-| 项目 | 规格 |
+| Item | Specification |
 |---|---|
-| SoC | NVIDIA Tegra 4 (T114)，32 位 |
-| 内存 / 存储 | 2 GB RAM / 16 GB eMMC |
-| 屏幕 | 5.0 英寸 IPS，1080×1920 |
-| 内核 | 3.4.35（原厂） |
+| SoC | NVIDIA Tegra 4 (T114), 32-bit |
+| RAM / storage | 2 GB / 16 GB eMMC |
+| Display | 5.0" IPS, 1080x1920 |
+| Kernel | 3.4.35 (stock) |
 
-## 说明
+## Notes
 
-本仓库是 TWRP recovery 的设备树，分支 `twrp3.0.2`。
+TWRP recovery device tree, branch `twrp3.0.2`.
